@@ -1,31 +1,31 @@
+#!/usr/bin/env python
 
 import sys
 
 from pprint import pformat
 
 
-class GamePosition(int):
+class GamePosition(object):
     def __init__(self, value):
-        self.value = int(value)
+        self.value = self.initial = int(value)
+        self.initial_possibilities = []
         self.possibilities = []
-        self.tried = []
 
         if self.value > 0:
             self.fixed = True
         else:
             self.fixed = False
 
-    def try(self):
+    def dotry(self):
         if not self.possibilities:
             return False
 
-        self.tried.append(self.value)
         self.value = self.possibilities.pop(0)
         return True
 
     def reset(self):
-        self.possibilities = self.tried
-        self.tried = []
+        self.value = self.initial
+        self.possibilities = self.initial_possibilities[:]
 
     def __str__(self):
         return str(self.value)
@@ -44,11 +44,6 @@ class Game(list):
 
             self.append(game_line)
 
-    @staticmethod
-    def _alldiff(line):
-        line_without_zero = [item for item in line if item != 0]
-        return len(set(line_without_zero)) == len(line_without_zero)
-
     def get_possibilities(self, line_num, col_num):
         start_x = line_num // 3 * 3
         start_y = col_num // 3 * 3
@@ -66,13 +61,15 @@ class Game(list):
 
         return tuple({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
 
-    def check_line(self, line_num):
-        line = self[line_num]
-        return self._alldiff(line)
+    def check_line(self, line_num, col_num):
+        current_value = self[line_num][col_num].value
+        line = [pos.value for pos in self[line_num]]
+        return line.count(current_value) <= 1
 
-    def check_column(self, col_num):
-        col = zip(*self)[col_num]
-        return self._alldiff(col)
+    def check_column(self, line_num, col_num):
+        current_value = self[line_num][col_num].value
+        column = [pos.value for pos in zip(*self)[col_num]]
+        return column.count(current_value) <= 1
 
     def check_region(self, line, col):
         start_x = line // 3 * 3
@@ -81,63 +78,77 @@ class Game(list):
         values = []
         for x in range(start_x, start_x + 3):
             for y in range(start_y, start_y + 3):
-                value = self[x][y]
-                if not value:
-                    continue
-
-                if value in values:
-                    return False
-
+                value = self[x][y].value
                 values.append(value)
+
+        current_value = self[line][col].value
+        if values.count(current_value) > 1:
+            return False
 
         return True
 
     def check_position(self, line, col):
+        if not self[line][col].value:
+            return False
+
         if not self.check_region(line, col):
+        #    print 'region', False
             return False
+        #print 'region', True
 
-        if not self.check_line(line):
+        if not self.check_line(line, col):
+        #    print 'line', False
             return False
+        #print 'line', True
 
-        if not self.check_column(col):
+        if not self.check_column(line, col):
+        #    print 'column', False
             return False
+        #print 'column', True
 
         return True
 
     def solve(self):
-
         for i, line in enumerate(self):
             for j, position in enumerate(line):
-                if position.fixed:
-                    position.possibilities.append(position.value)
-                else:
+                if not position.fixed:
+                #    position.possibilities.append(position.value)
+                #else:
                     possibilities = self.get_possibilities(i, j)
-                    position.possibilities.extend(possibilities)
-                    position.possibilities.sort()
+                    position.initial_possibilities.extend(possibilities)
+                    position.initial_possibilities.sort()
+                    position.reset()
 
-                position.try()
-
-        self._back = True
         while(self.cur_x != -1):
-            if position.check_position(cur_x, cur_y):
-                if self._back:
-                    self._prev()
-                else:
-                    self._next()
-                continue
-
-            changed = self.try()
-            if not changed:
-                self._back = False
-                position.reset()
+        #    print '-' * 80
+        #    print 'pos', self.cur_x, self.cur_y
+        #    print self.current_position
+        #    print self
+            if self.check_position(self.cur_x, self.cur_y):
+        #        print 'checked', True
                 self._prev()
+                self.current_position.possibilities = list(self.get_possibilities(self.cur_x, self.cur_y))
+                continue
+        #    print 'checked', False
 
+        #    print self.current_position.possibilities
+            changed = self.current_position.dotry()
+        #    print 'depois:', self.current_position.value
+            #if self.cur_y == 6 and not self.current_position.possibilities:
+            #    break
+            if not changed:
+                self.current_position.reset()
+                self._next()
+                self.current_position.value = 0
+
+    @property
+    def current_position(self):
+        return self[self.cur_x][self.cur_y]
 
     def _next(self):
         if self.cur_y == 8:
             if self.cur_x == 8:
                 self._prev()
-                self._back = True
             else:
                 self.cur_y = 0
                 self.cur_x += 1
@@ -193,5 +204,8 @@ def parse_input():
 
 if __name__ == '__main__':
     games = parse_input()
+    #for game in games:
+    #    game.solve()
+    #    print game
     games[0].solve()
     print games[0]
