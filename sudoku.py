@@ -33,7 +33,7 @@ class GamePosition(object):
 
 class Game(list):
     def __init__(self, matrix):
-        self.cur_x = self.cur_y = 8
+        self.cur_x = self.cur_y = 0
 
         for line in matrix:
             game_line = []
@@ -88,26 +88,24 @@ class Game(list):
                           self.current_position.possibilities)
 
             self.current_position.next_try()
-            self.previous()
+            self.next()
             self.update_possibilities()
 
             while(not self.current_position.possibilities):
                 self.current_position.reset()
-                self.next()
-                self.current_position.value = self.current_position.initial
+                self.previous()
+
+        self.current_position.next_try()
 
     @property
     def solved(self):
-        if self.cur_x == self.cur_y == 0:
+        if self.cur_x == self.cur_y == 8:
             return bool(self.current_position.possibilities)
 
     def next(self):
         if self.cur_y == 8:
-            if self.cur_x == 8:
-                self.cur_x = -1  # Stop Iteration
-            else:
-                self.cur_y = 0
-                self.cur_x += 1
+            self.cur_y = 0
+            self.cur_x += 1
         else:
             self.cur_y += 1
 
