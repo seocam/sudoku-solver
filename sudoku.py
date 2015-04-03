@@ -160,8 +160,12 @@ def parse_input():
     return games
 
 
-if __name__ == '__main__':
+def main():
     games = parse_input()
     for game in games:
         game.solve()
         print game
+
+
+if __name__ == '__main__':
+    main()
