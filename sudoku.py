@@ -65,7 +65,7 @@ class Game(list):
         [values.add(i.value) for i in self[self.cur_x]]
 
         # Column
-        [values.add(i.value) for i in zip(*self)[self.cur_y]]
+        [values.add(line[self.cur_y].value) for line in self]
 
         possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
         self.current_position.possibilities = possibilities
