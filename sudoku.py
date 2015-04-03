@@ -47,14 +47,22 @@ class Game(list):
 
         self.current_position = self[self.cur_x][self.cur_y]
 
+        self._region_start = {}
+
+    def get_region_start(self, point):
+        if point not in self._region_start:
+            self._region_start[point] = point // 3 * 3
+
+        return self._region_start[point]
+
     def update_possibilities(self):
         if self.current_position.fixed:
             value = self.current_position.value
             self.current_position.possibilities = [value]
             return
 
-        start_x = self.cur_x // 3 * 3
-        start_y = self.cur_y // 3 * 3
+        start_x = self.get_region_start(self.cur_x)
+        start_y = self.get_region_start(self.cur_y)
 
         values = set()
         for x in range(start_x, start_x + 3):
