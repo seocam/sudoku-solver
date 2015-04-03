@@ -56,18 +56,18 @@ class Game(list):
         start_x = self.cur_x // 3 * 3
         start_y = self.cur_y // 3 * 3
 
-        values = []
+        values = set()
         for x in range(start_x, start_x + 3):
             for y in range(start_y, start_y + 3):
-                values.append(self[x][y].value)
+                values.add(self[x][y].value)
 
         # Line
-        [values.append(i.value) for i in self[self.cur_x]]
+        [values.add(i.value) for i in self[self.cur_x]]
 
         # Column
-        [values.append(i.value) for i in zip(*self)[self.cur_y]]
+        [values.add(i.value) for i in zip(*self)[self.cur_y]]
 
-        possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - set(values))
+        possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
         self.current_position.possibilities = possibilities
 
     def solve(self):
