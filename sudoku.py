@@ -13,7 +13,7 @@ if DEBUG:
 class GamePosition(object):
     def __init__(self, value):
         self.value = self.initial = int(value)
-        self.possibilities = set()
+        self.possibilities = []
 
         if self.value > 0:
             self.fixed = True
@@ -21,11 +21,11 @@ class GamePosition(object):
             self.fixed = False
 
     def next_try(self):
-        self.value = self.possibilities.pop()
+        self.value = self.possibilities.pop(0)
 
     def reset(self):
         self.value = self.initial
-        self.possibilities.clear()
+        self.possibilities = []
 
     def __str__(self):
         return str(self.value)
@@ -48,28 +48,27 @@ class Game(list):
         self.current_position = self[self.cur_x][self.cur_y]
 
     def update_possibilities(self):
-        possibilities = self.current_position.possibilities
-
         if self.current_position.fixed:
-            possibilities.add(self.current_position.value)
+            value = self.current_position.value
+            self.current_position.possibilities = [value]
             return
 
         start_x = self.cur_x // 3 * 3
         start_y = self.cur_y // 3 * 3
 
-        possibilities.update({1, 2, 3, 4, 5, 6, 7, 8, 9})
+        values = []
         for x in range(start_x, start_x + 3):
             for y in range(start_y, start_y + 3):
-                if self[x][y].value in possibilities:
-                    possibilities.remove(self[x][y].value)
+                values.append(self[x][y].value)
 
         # Line
-        [possibilities.remove(i.value) for i in self[self.cur_x]
-         if i.value in possibilities]
+        [values.append(i.value) for i in self[self.cur_x]]
 
         # Column
-        [possibilities.remove(i.value) for i in zip(*self)[self.cur_y]
-         if i.value in possibilities]
+        [values.append(i.value) for i in zip(*self)[self.cur_y]]
+
+        possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - set(values))
+        self.current_position.possibilities = possibilities
 
     def solve(self):
 
