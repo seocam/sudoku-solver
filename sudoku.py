@@ -4,10 +4,7 @@ import sys
 
 import logging
 
-DEBUG = False
-
-if DEBUG:
-    logging.root.setLevel(logging.DEBUG)
+from optparse import OptionParser
 
 
 class GamePosition(object):
@@ -79,18 +76,16 @@ class Game(list):
         self.current_position.possibilities = possibilities
 
     def solve(self):
-
         self.update_possibilities()
 
         while(not self.solved):
-            if DEBUG:
-                logging.debug('-' * 80)
-                logging.debug('[%s][%s]: %s',
-                              self.cur_x, self.cur_y, self.current_position)
-                logging.debug('Current status\n%s', self)
+            logging.debug('-' * 80)
+            logging.debug('[%s][%s]: %s',
+                          self.cur_x, self.cur_y, self.current_position)
+            logging.debug('Current status\n%s', self)
 
-                logging.debug('Possibilities %s',
-                              self.current_position.possibilities)
+            logging.debug('Possibilities %s',
+                          self.current_position.possibilities)
 
             self.current_position.next_try()
             self.previous()
@@ -167,9 +162,33 @@ def parse_input():
     return games
 
 
+def parse_options():
+    optparser = OptionParser()
+
+    optparser.add_option("-v", "--verbose", dest="verbose", default=False,
+                         action="store_true", help="Verbose output")
+    optparser.add_option("-d", "--debug", dest="debug", default=False,
+                         action="store_true", help="Print debug information")
+
+    return optparser.parse_args()[0]
+
+
+def configure_logging(options):
+    if options.verbose:
+        logging.root.setLevel(logging.INFO)
+
+    if options.debug:
+        logging.root.setLevel(logging.DEBUG)
+
+
 def main():
+    options = parse_options()
+    configure_logging(options)
+
     games = parse_input()
-    for game in games:
+    for i, game in enumerate(games):
+        logging.info('Game #%s', i + 1)
+
         game.solve()
         print game
 
