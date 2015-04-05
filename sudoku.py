@@ -181,12 +181,14 @@ class Game(list):
             # Check for zeros
             if 0 in line:
                 logging.info('Invalid Solution (zeros)')
+                logging.debug('\n%s', self)
                 return False
 
             # Check for lines
             line_set = {pos.value for pos in line}
             if len(line_set) != 9:
                 logging.info('Invalid Solution (line)')
+                logging.debug('\n%s', self)
                 return False
 
         transp_matrix = zip(*self.matrix)
@@ -196,6 +198,7 @@ class Game(list):
             column_set = {pos.value for pos in column}
             if len(column_set) != 9:
                 logging.info('Invalid Solution (column)')
+                logging.debug('\n%s', self)
                 return False
 
         # Check regions
@@ -211,6 +214,7 @@ class Game(list):
 
             if len(region_set) != 9:
                 logging.info('Invalid Solution (region)')
+                logging.debug('\n%s', self)
                 return False
 
         logging.info('Valid Solution')
