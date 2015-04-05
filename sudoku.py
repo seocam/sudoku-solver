@@ -7,124 +7,139 @@ import logging
 from optparse import OptionParser
 
 
+REGION_START = {}
+
+
+def get_region_start(point):
+    if point not in REGION_START:
+        REGION_START[point] = point // 3 * 3
+
+    return REGION_START[point]
+
+
 class GamePosition(object):
-    def __init__(self, value):
-        self.value = self.initial = int(value)
+    def __init__(self, value, game, i, j):
+        self.value = int(value)
         self.possibilities = []
+        self.game = game
+        self.i = i
+        self.j = j
 
         if self.value > 0:
             self.fixed = True
         else:
             self.fixed = False
+            self.game.available_moves.append(self.coordinates)
 
-    def next_try(self):
+    @property
+    def coordinates(self):
+        return self.i, self.j
+
+    def try_next(self):
         self.value = self.possibilities.pop(0)
 
     def reset(self):
-        self.value = self.initial
         self.possibilities = []
+        self.value = 0
+
+    def update_possibilities(self):
+        if self.fixed:
+            self.possibilities = [self.value]
+            return
+
+        start_i = get_region_start(self.i)
+        start_j = get_region_start(self.j)
+
+        values = set()
+        for x in range(start_i, start_i + 3):
+            for y in range(start_j, start_j + 3):
+                values.add(self.game[x][y].value)
+
+        # Line
+        [values.add(i.value) for i in self.game[self.i]]
+
+        # Column
+        [values.add(line[self.j].value) for line in self.game]
+
+        self.possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
 
     def __str__(self):
         return str(self.value)
 
     def __repr__(self):
-        return str(self)
+        return '[{}][{}] = {}'.format(self.i, self.j, self.value)
 
 
 class Game(list):
     def __init__(self, matrix):
-        self.cur_x = self.cur_y = 0
+        self.available_moves = []
+        self.last_moves = []
 
-        for line in matrix:
+        for i, line in enumerate(matrix):
             game_line = []
-            for value in line:
-                game_line.append(GamePosition(value))
+            for j, value in enumerate(line):
+                position = GamePosition(value, self, i, j)
+                game_line.append(position)
 
             self.append(game_line)
 
-        self.current_position = self[self.cur_x][self.cur_y]
-
+        # region calc cache
         self._region_start = {}
 
-    def get_region_start(self, point):
-        if point not in self._region_start:
-            self._region_start[point] = point // 3 * 3
+    def log_step(self):
+        logging.debug('-' * 80)
 
-        return self._region_start[point]
+        logging.debug('Available moves (%s): %s',
+                      len(self.available_moves),
+                      self.available_moves)
 
-    def update_possibilities(self):
-        if self.current_position.fixed:
-            value = self.current_position.value
-            self.current_position.possibilities = [value]
-            return
+        logging.debug('Last moves: %s', self.last_moves)
 
-        start_x = self.get_region_start(self.cur_x)
-        start_y = self.get_region_start(self.cur_y)
+        logging.debug('Current status:\n%s', self)
 
-        values = set()
-        for x in range(start_x, start_x + 3):
-            for y in range(start_y, start_y + 3):
-                values.add(self[x][y].value)
+        if self.current_position:
+            logging.debug('Current position: %s', self.current_position)
 
-        # Line
-        [values.add(i.value) for i in self[self.cur_x]]
-
-        # Column
-        [values.add(line[self.cur_y].value) for line in self]
-
-        possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
-        self.current_position.possibilities = possibilities
+            logging.debug('Possibilities: %s',
+                          self.current_position.possibilities)
+        else:
+            logging.debug('Current position: n/a')
 
     def solve(self):
-        self.update_possibilities()
-
-        while(not self.solved):
-            logging.debug('-' * 80)
-            logging.debug('[%s][%s]: %s',
-                          self.cur_x, self.cur_y, self.current_position)
-            logging.debug('Current status\n%s', self)
-
-            logging.debug('Possibilities %s',
-                          self.current_position.possibilities)
-
-            self.current_position.next_try()
+        while(self.available_moves):
             self.next()
-            self.update_possibilities()
+            self.current_position.update_possibilities()
 
             while(not self.current_position.possibilities):
                 self.current_position.reset()
                 self.previous()
 
-        self.current_position.next_try()
-
-    @property
-    def solved(self):
-        if self.cur_x == self.cur_y == 8:
-            return bool(self.current_position.possibilities)
+            self.current_position.try_next()
 
     def next(self):
-        if self.cur_y == 8:
-            self.cur_y = 0
-            self.cur_x += 1
-        else:
-            self.cur_y += 1
-
-        self.current_position = self[self.cur_x][self.cur_y]
+        self.log_step()
+        coordinates = self.available_moves.pop(0)
+        self.last_moves.append(coordinates)
 
     def previous(self):
-        if self.cur_y == 0:
-            self.cur_y = 8
-            self.cur_x -= 1
-        else:
-            self.cur_y -= 1
+        self.log_step()
+        coordinates = self.last_moves.pop()
+        self.available_moves.insert(0, coordinates)
 
-        self.current_position = self[self.cur_x][self.cur_y]
+    @property
+    def current_position(self):
+        try:
+            i, j = self.last_moves[-1]
+        except IndexError:
+            return
+
+        return self[i][j]
 
     def __str__(self):
         game_repr = []
         for line in self:
             for position in line:
-                game_repr.append(str(position))
+                game_repr.append(str(position.value))
                 game_repr.append(' ')
             game_repr[-1] = '\n'
         return ''.join(game_repr)
