@@ -184,7 +184,7 @@ class Game(list):
                 logging.debug('\n%s', self)
                 return False
 
-            # Check for lines
+            # Check lines
             line_set = {pos.value for pos in line}
             if len(line_set) != 9:
                 logging.info('Invalid Solution (line)')
@@ -194,7 +194,7 @@ class Game(list):
         transp_matrix = zip(*self.matrix)
 
         for column in transp_matrix:
-            # Check for column
+            # Check column
             column_set = {pos.value for pos in column}
             if len(column_set) != 9:
                 logging.info('Invalid Solution (column)')
