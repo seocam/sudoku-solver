@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-import sys
-
+import itertools
 import logging
+import sys
 
 from optparse import OptionParser
 
@@ -51,9 +51,9 @@ class GamePosition(object):
         start_j = get_region_start(self.j)
 
         values = set()
-        for x in range(start_i, start_i + 3):
-            for y in range(start_j, start_j + 3):
-                values.add(self.game.matrix[x][y].value)
+        for i in range(start_i, start_i + 3):
+            for j in range(start_j, start_j + 3):
+                values.add(self.game.matrix[i][j].value)
 
         # Line
         [values.add(i.value) for i in self.game.matrix[self.i]]
@@ -132,7 +132,6 @@ class Game(list):
 
         return self.solve_simple()
 
-
     def next(self):
         if not self.available_moves:
             raise StopIteration
@@ -177,12 +176,49 @@ class Game(list):
     def __iter__(self):
         return self
 
+    def is_valid(self):
+        for line in self.matrix:
+            # Check for zeros
+            if 0 in line:
+                logging.info('Invalid Solution (zeros)')
+                return False
+
+            # Check for lines
+            line_set = {pos.value for pos in line}
+            if len(line_set) != 9:
+                logging.info('Invalid Solution (line)')
+                return False
+
+        transp_matrix = zip(*self.matrix)
+
+        for column in transp_matrix:
+            # Check for column
+            column_set = {pos.value for pos in column}
+            if len(column_set) != 9:
+                logging.info('Invalid Solution (column)')
+                return False
+
+        # Check regions
+        starts = [0, 3, 6]
+        regions = itertools.product(starts, starts)
+
+        for start_i, start_j in regions:
+            region_set = set()
+
+            for i in range(start_i, start_i + 3):
+                for j in range(start_j, start_j + 3):
+                    region_set.add(self.matrix[i][j].value)
+
+            if len(region_set) != 9:
+                logging.info('Invalid Solution (region)')
+                return False
+
+        logging.info('Valid Solution')
+        return True
+
 
 def parse_input(file_obj=sys.stdin):
     games = []
-
-    # Skip first line
-    file_obj.readline()
 
     count = 0
     matrix = []
@@ -190,7 +226,7 @@ def parse_input(file_obj=sys.stdin):
     for str_line in file_obj:
         str_line = str_line.strip()
 
-        if not str_line:
+        if not str_line or ' ' not in str_line:
             continue
 
         line = str_line.split(' ')
@@ -215,6 +251,9 @@ def parse_options():
     optparser.add_option("--forward-check", dest="forward_check",
                          default=False, action="store_true",
                          help="Enable forward check heuristic")
+    optparser.add_option("--validate", dest="validade",
+                         default=False, action="store_true",
+                         help="Check game results")
 
     return optparser.parse_args()[0]
 
@@ -232,12 +271,21 @@ def main():
     configure_logging(options)
 
     games = parse_input()
+    status = 0
+
     for i, game in enumerate(games):
+        logging.info('-' * 80)
         logging.info('Game #%s', i + 1)
 
-        game.solve(forward_check=options.forward_check)
-        print game
+        if options.validade:
+            if not game.is_valid():
+                status = 1
+        else:
+            game.solve(forward_check=options.forward_check)
+            print game
+
+    return status
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
