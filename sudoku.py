@@ -20,7 +20,7 @@ def get_region_start(point):
 class GamePosition(object):
     def __init__(self, value, game, i, j):
         self.value = int(value)
-        self.possibilities = []
+        self.possibilities = range(1, 10)
         self.game = game
         self.i = i
         self.j = j
@@ -37,41 +37,42 @@ class GamePosition(object):
 
     def try_next(self):
         self.value = self.possibilities.pop(0)
+        logging.debug('Setting position value: %s', self)
 
     def reset(self):
-        self.possibilities = []
+        self.possibilities = range(1, 10)
         self.value = 0
 
     def update_possibilities(self):
-        if self.fixed:
-            self.possibilities = [self.value]
-            return
+        self.possibilities = self.get_possibilities()
 
+    def get_possibilities(self):
         start_i = get_region_start(self.i)
         start_j = get_region_start(self.j)
 
         values = set()
         for x in range(start_i, start_i + 3):
             for y in range(start_j, start_j + 3):
-                values.add(self.game[x][y].value)
+                values.add(self.game.matrix[x][y].value)
 
         # Line
-        [values.add(i.value) for i in self.game[self.i]]
+        [values.add(i.value) for i in self.game.matrix[self.i]]
 
         # Column
-        [values.add(line[self.j].value) for line in self.game]
+        [values.add(line[self.j].value) for line in self.game.matrix]
 
-        self.possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
+        return list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
 
     def __str__(self):
-        return str(self.value)
+        return '[{}][{}] = {}'.format(self.i, self.j, self.value)
 
     def __repr__(self):
-        return '[{}][{}] = {}'.format(self.i, self.j, self.value)
+        return str(self)
 
 
 class Game(list):
     def __init__(self, matrix):
+        self.matrix = []
         self.available_moves = []
         self.last_moves = []
 
@@ -81,13 +82,12 @@ class Game(list):
                 position = GamePosition(value, self, i, j)
                 game_line.append(position)
 
-            self.append(game_line)
+            self.matrix.append(game_line)
 
-        # region calc cache
-        self._region_start = {}
-
-    def log_step(self):
+    def log_step(self, position):
         logging.debug('-' * 80)
+
+        logging.debug('Current status:\n%s', self)
 
         logging.debug('Available moves (%s): %s',
                       len(self.available_moves),
@@ -95,36 +95,63 @@ class Game(list):
 
         logging.debug('Last moves: %s', self.last_moves)
 
-        logging.debug('Current status:\n%s', self)
-
-        if self.current_position:
-            logging.debug('Current position: %s', self.current_position)
-
-            logging.debug('Possibilities: %s',
-                          self.current_position.possibilities)
+        if position:
+            logging.debug('Possibilities: %s', position.possibilities)
         else:
             logging.debug('Current position: n/a')
 
-    def solve(self):
-        while(self.available_moves):
-            self.next()
-            self.current_position.update_possibilities()
+    def solve_simple(self):
+        logging.info('Simple Solver')
 
-            while(not self.current_position.possibilities):
-                self.current_position.reset()
-                self.previous()
+        for position in self:
+            valid_values = position.get_possibilities()
 
-            self.current_position.try_next()
+            while position.value not in valid_values:
+                while not position.possibilities:
+                    position.reset()
+                    position = self.previous()
+                    valid_values = position.get_possibilities()
+
+                position.try_next()
+
+    def solve_forward_check(self):
+        logging.info('Forward Check Solver')
+
+        for position in self:
+            position.update_possibilities()
+
+            while not position.possibilities:
+                position.reset()
+                position = self.previous()
+
+            position.try_next()
+
+    def solve(self, forward_check=False):
+        if forward_check:
+            return self.solve_forward_check()
+
+        return self.solve_simple()
+
 
     def next(self):
-        self.log_step()
+        if not self.available_moves:
+            raise StopIteration
+
+        self.log_step(self.current_position)
         coordinates = self.available_moves.pop(0)
         self.last_moves.append(coordinates)
 
+        return self.current_position
+
     def previous(self):
-        self.log_step()
+        if not self.last_moves:
+            raise StopIteration
+
+        self.log_step(self.current_position)
         coordinates = self.last_moves.pop()
         self.available_moves.insert(0, coordinates)
+
+        return self.current_position
 
     @property
     def current_position(self):
@@ -133,11 +160,11 @@ class Game(list):
         except IndexError:
             return
 
-        return self[i][j]
+        return self.matrix[i][j]
 
     def __str__(self):
         game_repr = []
-        for line in self:
+        for line in self.matrix:
             for position in line:
                 game_repr.append(str(position.value))
                 game_repr.append(' ')
@@ -147,17 +174,20 @@ class Game(list):
     def __repr__(self):
         return str(self)
 
+    def __iter__(self):
+        return self
 
-def parse_input():
+
+def parse_input(file_obj=sys.stdin):
     games = []
 
     # Skip first line
-    sys.stdin.readline()
+    file_obj.readline()
 
     count = 0
     matrix = []
 
-    for str_line in sys.stdin:
+    for str_line in file_obj:
         str_line = str_line.strip()
 
         if not str_line:
@@ -182,6 +212,9 @@ def parse_options():
                          action="store_true", help="Verbose output")
     optparser.add_option("-d", "--debug", dest="debug", default=False,
                          action="store_true", help="Print debug information")
+    optparser.add_option("--forward-check", dest="forward_check",
+                         default=False, action="store_true",
+                         help="Enable forward check heuristic")
 
     return optparser.parse_args()[0]
 
@@ -202,7 +235,7 @@ def main():
     for i, game in enumerate(games):
         logging.info('Game #%s', i + 1)
 
-        game.solve()
+        game.solve(forward_check=options.forward_check)
         print game
 
 
