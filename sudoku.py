@@ -6,8 +6,9 @@ import sys
 
 from optparse import OptionParser
 
-
+# Caches
 REGION_START = {}
+REGIONS = {}
 
 
 def get_region_start(point):
@@ -17,18 +18,30 @@ def get_region_start(point):
     return REGION_START[point]
 
 
+def get_region(i, j):
+    start_i = get_region_start(i)
+    start_j = get_region_start(j)
+
+    coord = (start_i, start_j)
+    if not coord in REGIONS:
+        REGIONS[coord] =[]
+
+        for i in range(start_i, start_i + 3):
+            for j in range(start_j, start_j + 3):
+                REGIONS[coord].append((i, j))
+
+    return REGIONS[coord]
+
+
 class GamePosition(object):
     def __init__(self, value, game, i, j):
         self.value = int(value)
-        self.possibilities = range(1, 10)
+        self.possibilities = []
         self.game = game
         self.i = i
         self.j = j
 
-        if self.value > 0:
-            self.fixed = True
-        else:
-            self.fixed = False
+        if self.value <= 0:
             self.game.available_moves.append(self.coordinates)
 
     @property
@@ -40,20 +53,15 @@ class GamePosition(object):
         logging.debug('Setting position value: %s', self)
 
     def reset(self):
-        self.possibilities = range(1, 10)
+        self.possibilities = []
         self.value = 0
 
-    def update_possibilities(self):
-        self.possibilities = self.get_possibilities()
-
-    def get_possibilities(self):
-        start_i = get_region_start(self.i)
-        start_j = get_region_start(self.j)
-
+    def update_possibilities(self, forward_check=False):
         values = set()
-        for i in range(start_i, start_i + 3):
-            for j in range(start_j, start_j + 3):
-                values.add(self.game.matrix[i][j].value)
+
+        # Region
+        for i, j in get_region(self.i, self.j):
+            values.add(self.game.matrix[i][j].value)
 
         # Line
         [values.add(i.value) for i in self.game.matrix[self.i]]
@@ -61,7 +69,15 @@ class GamePosition(object):
         # Column
         [values.add(line[self.j].value) for line in self.game.matrix]
 
-        return list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
+        possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
+
+        # Forward check enabled
+        if forward_check:
+            for possibility in possibilities:
+                if not self.game.forward_check(self, possibility):
+                    possibilities.remove(possibility)
+
+        self.possibilities = possibilities 
 
     def __str__(self):
         return '[{}][{}] = {}'.format(self.i, self.j, self.value)
@@ -83,6 +99,39 @@ class Game(list):
                 game_line.append(position)
 
             self.matrix.append(game_line)
+        
+        for i, j in self.available_moves:
+            self.matrix[i][j].update_possibilities()
+
+    def forward_check_position(self, fwd_position, value):
+        if self.current_position == fwd_position:
+            return True
+
+        if fwd_position.value != 0:
+            return True
+
+        if len(fwd_position.possibilities) == 1:
+            if value in fwd_position.possibilities:
+                return False
+
+        return True
+
+    def forward_check(self, position, value):
+        for fwd_position in self.matrix[position.i]:
+            if not self.forward_check_position(fwd_position, value):
+                return False
+
+        for line in self.matrix:
+            fwd_position = line[position.j]
+            if not self.forward_check_position(fwd_position, value):
+                return False
+
+        for i, j in get_region(position.i, position.j):
+            fwd_position = self.matrix[i][j]
+            if not self.forward_check_position(fwd_position, value):
+                return False
+
+        return True
 
     def log_step(self, position):
         logging.debug('-' * 80)
@@ -100,37 +149,15 @@ class Game(list):
         else:
             logging.debug('Current position: n/a')
 
-    def solve_simple(self):
-        logging.info('Simple Solver')
-
+    def solve(self, forward_check):
         for position in self:
-            valid_values = position.get_possibilities()
-
-            while position.value not in valid_values:
-                while not position.possibilities:
-                    position.reset()
-                    position = self.previous()
-                    valid_values = position.get_possibilities()
-
-                position.try_next()
-
-    def solve_forward_check(self):
-        logging.info('Forward Check Solver')
-
-        for position in self:
-            position.update_possibilities()
+            position.update_possibilities(forward_check=forward_check)
 
             while not position.possibilities:
                 position.reset()
                 position = self.previous()
 
             position.try_next()
-
-    def solve(self, forward_check=False):
-        if forward_check:
-            return self.solve_forward_check()
-
-        return self.solve_simple()
 
     def next(self):
         if not self.available_moves:
@@ -143,7 +170,7 @@ class Game(list):
         return self.current_position
 
     def previous(self):
-        if not self.last_moves:
+        if len(self.last_moves) == 1:
             raise StopIteration
 
         self.log_step(self.current_position)
