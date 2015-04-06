@@ -6,32 +6,6 @@ import sys
 
 from optparse import OptionParser
 
-# Caches
-REGION_START = {}
-REGIONS = {}
-
-
-def get_region_start(point):
-    if point not in REGION_START:
-        REGION_START[point] = point // 3 * 3
-
-    return REGION_START[point]
-
-
-def get_region(i, j):
-    start_i = get_region_start(i)
-    start_j = get_region_start(j)
-
-    coord = (start_i, start_j)
-    if not coord in REGIONS:
-        REGIONS[coord] =[]
-
-        for i in range(start_i, start_i + 3):
-            for j in range(start_j, start_j + 3):
-                REGIONS[coord].append((i, j))
-
-    return REGIONS[coord]
-
 
 class GamePosition(object):
     def __init__(self, value, game, i, j):
@@ -60,7 +34,7 @@ class GamePosition(object):
         values = set()
 
         # Region
-        for i, j in get_region(self.i, self.j):
+        for i, j in self.game.get_region(self.i, self.j):
             values.add(self.game.matrix[i][j].value)
 
         # Line
@@ -77,7 +51,7 @@ class GamePosition(object):
                 if not self.game.forward_check(self, possibility):
                     possibilities.remove(possibility)
 
-        self.possibilities = possibilities 
+        self.possibilities = possibilities
 
     def __str__(self):
         return '[{}][{}] = {}'.format(self.i, self.j, self.value)
@@ -87,6 +61,10 @@ class GamePosition(object):
 
 
 class Game(list):
+
+    # Caches
+    REGIONS = {}
+
     def __init__(self, matrix):
         self.matrix = []
         self.available_moves = []
@@ -97,11 +75,26 @@ class Game(list):
             for j, value in enumerate(line):
                 position = GamePosition(value, self, i, j)
                 game_line.append(position)
-
             self.matrix.append(game_line)
-        
+
+        # Initialize possibilities
         for i, j in self.available_moves:
-            self.matrix[i][j].update_possibilities()
+           self.matrix[i][j].update_possibilities()
+
+    @classmethod
+    def get_region(cls, i, j):
+        start_i = i // 3 * 3
+        start_j = j // 3 * 3
+
+        coord = (start_i, start_j)
+        if coord not in cls.REGIONS:
+            cls.REGIONS[coord] = []
+
+            for i in range(start_i, start_i + 3):
+                for j in range(start_j, start_j + 3):
+                    cls.REGIONS[coord].append((i, j))
+
+        return cls.REGIONS[coord]
 
     def forward_check_position(self, fwd_position, value):
         if self.current_position == fwd_position:
@@ -126,7 +119,7 @@ class Game(list):
             if not self.forward_check_position(fwd_position, value):
                 return False
 
-        for i, j in get_region(position.i, position.j):
+        for i, j in self.get_region(position.i, position.j):
             fwd_position = self.matrix[i][j]
             if not self.forward_check_position(fwd_position, value):
                 return False
@@ -229,15 +222,10 @@ class Game(list):
                 return False
 
         # Check regions
-        starts = [0, 3, 6]
-        regions = itertools.product(starts, starts)
-
-        for start_i, start_j in regions:
+        for region in self.REGIONS.values():
             region_set = set()
-
-            for i in range(start_i, start_i + 3):
-                for j in range(start_j, start_j + 3):
-                    region_set.add(self.matrix[i][j].value)
+            for i, j in region:
+                region_set.add(self.matrix[i][j].value)
 
             if len(region_set) != 9:
                 logging.info('Invalid Solution (region)')
