@@ -7,54 +7,137 @@ import sys
 from optparse import OptionParser
 
 
+class Possibilities(object):
+    def __init__(self):
+        self.column = set(range(1, 10))
+        self.line = set(range(1, 10))
+        self.region = set(range(1, 10))
+        self.tested = set()
+
+    @property
+    def intersect(self):
+        return (self.line & self.region & self.column) - self.tested
+   
+    def __len__(self):
+        return len(self.intersect) 
+   
+    def _to_list(self):
+        return sorted(self.intersect)
+
+    def next(self):
+        possibilities = self._to_list()
+
+        if not possibilities:
+            raise StopIteration 
+
+        return possibilities[0]
+
+    def __iter__(self):
+        return self 
+
+    def __str__(self):
+        logging.debug('Line possibilities: %s', self.line)
+        logging.debug('Column possibilities: %s', self.column)
+        logging.debug('Region possibilities: %s', self.region)
+        return str(self._to_list())
+
+    def __repr__(self):
+        return str(self)
+
+
 class GamePosition(object):
     def __init__(self, value, game, i, j):
-        self.value = int(value)
-        self.possibilities = []
+        self._value = 0
+        self.possibilities = Possibilities()
         self.game = game
         self.i = i
         self.j = j
+        self.value = int(value)
 
-        if self.value <= 0:
-            self.game.available_moves.append(self.coordinates)
+    def check_possibilities(self, value):
+        logging.debug('Forward Checking possibility %s', value)
+        positions = itertools.chain(self.line, self.column, self.region)
+        for position in positions:
+            if not position.possibilities.intersect - {value}:
+                logging.debug('Forward Checking failed on position %s',
+                              position)
+                return False
+
+        return True
+
+    def remove_possibilities(self, value):
+        for position in self.line:
+            if value in position.possibilities.line:
+                position.possibilities.line.remove(value)
+
+        for position in self.column:
+            if value in position.possibilities.column:
+                position.possibilities.column.remove(value) 
+
+        for position in self.region:
+            if value in position.possibilities.column:
+                position.possibilities.region.remove(value) 
+
+    def add_possibilities(self, value):
+        for position in self.line:
+            position.possibilities.line.add(value)
+
+        for position in self.column:
+            position.possibilities.column.add(value)
+
+        for position in self.region:
+            position.possibilities.region.add(value)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+
+        logging.debug('Setting position [%s][%s] from %s to %s',
+                      self.i, self.j, self.value, value)
+
+        if value == self._value:
+            return 
+
+        if not value:
+            logging.debug('Added %s back to possibilities', self._value)
+            self.add_possibilities(self._value)
+        else:
+            logging.debug('Removed %s from possibilities', value)
+            self.remove_possibilities(value)
+
+        self._value = value
+
+    @property
+    def line(self):
+        for position in self.game.matrix[self.i]:
+            if position != self:
+                yield position
+
+    @property
+    def column(self):
+        for line in self.game.matrix:
+            if line[self.j] != self:
+                yield line[self.j]
+
+    @property
+    def region(self):
+        start_i = self.i // 3 * 3
+        start_j = self.j // 3 * 3
+
+        for i in range(start_i, start_i + 3):
+            for j in range(start_j, start_j + 3):
+                if self.game.matrix[i][j] != self:
+                    yield self.game.matrix[i][j]
 
     @property
     def coordinates(self):
         return self.i, self.j
 
-    def try_next(self):
-        self.value = self.possibilities.pop(0)
-        logging.debug('Setting position value: %s', self)
-
-    def reset(self):
-        self.possibilities = []
-        self.value = 0
-
-    def update_possibilities(self, forward_check=False):
-        values = set()
-
-        # Region
-        for i, j in self.game.get_region(self.i, self.j):
-            values.add(self.game.matrix[i][j].value)
-
-        # Line
-        [values.add(i.value) for i in self.game.matrix[self.i]]
-
-        # Column
-        [values.add(line[self.j].value) for line in self.game.matrix]
-
-        possibilities = list({1, 2, 3, 4, 5, 6, 7, 8, 9} - values)
-
-        # Forward check enabled
-        if forward_check:
-            for possibility in possibilities:
-                if not self.game.forward_check(self, possibility):
-                    possibilities.remove(possibility)
-
-        self.possibilities = possibilities
-
     def __str__(self):
-        return '[{}][{}] = {}'.format(self.i, self.j, self.value)
+        return str(self.coordinates)
 
     def __repr__(self):
         return str(self)
@@ -62,72 +145,39 @@ class GamePosition(object):
 
 class Game(list):
 
-    # Caches
-    REGIONS = {}
-
     def __init__(self, matrix):
-        self.matrix = []
-        self.available_moves = []
         self.last_moves = []
 
+        # Start an empty game
+        self.empty_game()
+
+        # Initialize the game with input data
+        self.init_game(matrix)
+
+    def init_game(self, matrix):
+        self.available_moves = []
+
         for i, line in enumerate(matrix):
-            game_line = []
             for j, value in enumerate(line):
-                position = GamePosition(value, self, i, j)
-                game_line.append(position)
-            self.matrix.append(game_line)
+                position = self.matrix[i][j]
+                position.value = int(value)
+                if not position.value:
+                    self.available_moves.append((i, j))
 
-        # Initialize possibilities
-        for i, j in self.available_moves:
-           self.matrix[i][j].update_possibilities()
+    def empty_game(self):
+        self.matrix = []
 
-    @classmethod
-    def get_region(cls, i, j):
-        start_i = i // 3 * 3
-        start_j = j // 3 * 3
+        for i in range(9):
+            line = []
+            for j in range(9):
+                line.append(GamePosition(0, self, i, j))
+            self.matrix.append(line)
 
-        coord = (start_i, start_j)
-        if coord not in cls.REGIONS:
-            cls.REGIONS[coord] = []
-
-            for i in range(start_i, start_i + 3):
-                for j in range(start_j, start_j + 3):
-                    cls.REGIONS[coord].append((i, j))
-
-        return cls.REGIONS[coord]
-
-    def forward_check_position(self, fwd_position, value):
-        if self.current_position == fwd_position:
-            return True
-
-        if fwd_position.value != 0:
-            return True
-
-        if len(fwd_position.possibilities) == 1:
-            if value in fwd_position.possibilities:
-                return False
-
-        return True
-
-    def forward_check(self, position, value):
-        for fwd_position in self.matrix[position.i]:
-            if not self.forward_check_position(fwd_position, value):
-                return False
-
-        for line in self.matrix:
-            fwd_position = line[position.j]
-            if not self.forward_check_position(fwd_position, value):
-                return False
-
-        for i, j in self.get_region(position.i, position.j):
-            fwd_position = self.matrix[i][j]
-            if not self.forward_check_position(fwd_position, value):
-                return False
-
-        return True
-
-    def log_step(self, position):
-        logging.debug('-' * 80)
+    def log_step(self, position=None):
+        if position:
+            logging.debug('Current position: %s', position.coordinates)
+        else:
+            logging.debug('Current position: n/a')
 
         logging.debug('Current status:\n%s', self)
 
@@ -139,36 +189,52 @@ class Game(list):
 
         if position:
             logging.debug('Possibilities: %s', position.possibilities)
-        else:
-            logging.debug('Current position: n/a')
 
     def solve(self, forward_check):
         for position in self:
-            position.update_possibilities(forward_check=forward_check)
-
             while not position.possibilities:
-                position.reset()
-                position = self.previous()
+                position = self.backtracking(position)
 
-            position.try_next()
+            position.possibilities.tested.add(position.value)
+            position.value = position.possibilities.next()
+
+    def backtracking(self, position):
+        logging.debug('No possibilities for [%s][%s]',
+                      *position.coordinates)
+        position.possibilities.tested.clear()
+        position = self.previous()
+        position.value = 0
+        return position
 
     def next(self):
         if not self.available_moves:
             raise StopIteration
 
-        self.log_step(self.current_position)
         coordinates = self.available_moves.pop(0)
+
+        logging.debug('Moving from %s to %s',
+                      self.current_position,
+                      coordinates)
+
         self.last_moves.append(coordinates)
 
+        self.log_step(self.current_position)
         return self.current_position
 
     def previous(self):
         if len(self.last_moves) == 1:
             raise StopIteration
 
-        self.log_step(self.current_position)
+        logging.debug('Backtracking!')
+
         coordinates = self.last_moves.pop()
+
+        logging.debug('Moving from %s to %s',
+                      coordinates, self.current_position)
+
         self.available_moves.insert(0, coordinates)
+
+        self.log_step(self.current_position)
 
         return self.current_position
 
