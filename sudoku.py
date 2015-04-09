@@ -17,10 +17,10 @@ class Possibilities(object):
     @property
     def intersect(self):
         return (self.line & self.region & self.column) - self.tested
-   
+
     def __len__(self):
-        return len(self.intersect) 
-   
+        return len(self.intersect)
+
     def _to_list(self):
         return sorted(self.intersect)
 
@@ -28,12 +28,12 @@ class Possibilities(object):
         possibilities = self._to_list()
 
         if not possibilities:
-            raise StopIteration 
+            raise StopIteration
 
         return possibilities[0]
 
     def __iter__(self):
-        return self 
+        return self
 
     def __str__(self):
         logging.debug('Line possibilities: %s', self.line)
@@ -62,7 +62,7 @@ class GamePosition(object):
         positions = itertools.chain(self.line, self.column, self.region)
 
         for position in positions:
-            if position.value != 0: 
+            if position.value != 0:
                 continue
 
             if not position.possibilities.intersect - {value}:
@@ -79,11 +79,11 @@ class GamePosition(object):
 
         for position in self.column:
             if value in position.possibilities.column:
-                position.possibilities.column.remove(value) 
+                position.possibilities.column.remove(value)
 
         for position in self.region:
             if value in position.possibilities.column:
-                position.possibilities.region.remove(value) 
+                position.possibilities.region.remove(value)
 
     def add_possibilities(self, value):
         for position in self.line:
@@ -106,7 +106,7 @@ class GamePosition(object):
                       self.i, self.j, self.value, value)
 
         if value == self._value:
-            return 
+            return
 
         if not value:
             logging.debug('Added %s back to possibilities', self._value)
@@ -152,8 +152,9 @@ class GamePosition(object):
 
 class Game(list):
 
-    def __init__(self, matrix, forward_check=False):
+    def __init__(self, matrix, forward_check=False, mrv=False):
         self.forward_check = forward_check
+        self.mrv = mrv
         self.last_moves = []
 
         # Start an empty game
@@ -170,7 +171,7 @@ class Game(list):
                 position = self.matrix[i][j]
                 position.value = int(value)
                 if not position.value:
-                    self.available_moves.append((i, j))
+                    self.available_moves.append(position)
 
     def empty_game(self):
         self.matrix = []
@@ -214,7 +215,7 @@ class Game(list):
                     break
 
                 position.possibilities.tested.add(value)
-                
+
             else:
                 position = self.previous()
 
@@ -222,16 +223,19 @@ class Game(list):
         if not self.available_moves:
             raise StopIteration
 
-        coordinates = self.available_moves.pop(0)
+        if self.mrv:
+            logging.debug('Sorting by min possibilities remaining')
+            self.available_moves.sort(key=lambda position:
+                                      len(position.possibilities))
 
-        logging.debug('Moving from %s to %s',
-                      self.current_position,
-                      coordinates)
+        position = self.available_moves.pop(0)
 
-        self.last_moves.append(coordinates)
+        logging.debug('Moving from %s to %s', self.current_position, position)
 
-        self.log_step(self.current_position)
-        return self.current_position
+        self.last_moves.append(position)
+
+        self.log_step(position)
+        return position
 
     def previous(self):
         if len(self.last_moves) == 1:
@@ -239,12 +243,12 @@ class Game(list):
 
         logging.debug('Backtracking!')
 
-        coordinates = self.last_moves.pop()
+        last_position = self.last_moves.pop()
 
-        logging.debug('Moving from %s to %s',
-                      coordinates, self.current_position)
+        logging.debug('Moving from %s to %s', last_position,
+                      self.current_position)
 
-        self.available_moves.insert(0, coordinates)
+        self.available_moves.insert(0, last_position)
 
         self.log_step(self.current_position)
 
@@ -253,11 +257,11 @@ class Game(list):
     @property
     def current_position(self):
         try:
-            i, j = self.last_moves[-1]
+            position = self.last_moves[-1]
         except IndexError:
             return
 
-        return self.matrix[i][j]
+        return position
 
     def __str__(self):
         game_repr = []
@@ -331,7 +335,9 @@ def parse_input(options, file_obj=sys.stdin):
         count += 1
 
         if count == 9:
-            games.append(Game(matrix, forward_check=options.forward_check))
+            game = Game(matrix, forward_check=options.forward_check,
+                        mrv=options.mrv)
+            games.append(game)
             matrix = []
             count = 0
 
@@ -348,6 +354,9 @@ def parse_options():
     optparser.add_option("--forward-check", dest="forward_check",
                          default=False, action="store_true",
                          help="Enable forward check heuristic")
+    optparser.add_option("--mrv", dest="mrv",
+                         default=False, action="store_true",
+                         help="Enable minimal remaining values heuristic")
     optparser.add_option("--validate", dest="validade",
                          default=False, action="store_true",
                          help="Check game results")
@@ -371,7 +380,6 @@ def main():
     status = 0
 
     for i, game in enumerate(games):
-        logging.info('-' * 80)
         logging.info('Game #%s', i + 1)
 
         if options.validade:
