@@ -55,9 +55,16 @@ class GamePosition(object):
         self.value = int(value)
 
     def check_possibilities(self, value):
+        if not self.game.forward_check:
+            return True
+
         logging.debug('Forward Checking possibility %s', value)
         positions = itertools.chain(self.line, self.column, self.region)
+
         for position in positions:
+            if position.value != 0: 
+                continue
+
             if not position.possibilities.intersect - {value}:
                 logging.debug('Forward Checking failed on position %s',
                               position)
@@ -145,7 +152,8 @@ class GamePosition(object):
 
 class Game(list):
 
-    def __init__(self, matrix):
+    def __init__(self, matrix, forward_check=False):
+        self.forward_check = forward_check
         self.last_moves = []
 
         # Start an empty game
@@ -190,21 +198,25 @@ class Game(list):
         if position:
             logging.debug('Possibilities: %s', position.possibilities)
 
-    def solve(self, forward_check):
+    def solve(self):
         for position in self:
             while not position.possibilities:
-                position = self.backtracking(position)
+                logging.debug('No possibilities for [%s][%s]',
+                              *position.coordinates)
+                position.possibilities.tested.clear()
+                position = self.previous()
+                position.value = 0
 
-            position.possibilities.tested.add(position.value)
-            position.value = position.possibilities.next()
+            for value in position.possibilities:
+                if position.check_possibilities(value):
+                    position.value = value
+                    position.possibilities.tested.add(value)
+                    break
 
-    def backtracking(self, position):
-        logging.debug('No possibilities for [%s][%s]',
-                      *position.coordinates)
-        position.possibilities.tested.clear()
-        position = self.previous()
-        position.value = 0
-        return position
+                position.possibilities.tested.add(value)
+                
+            else:
+                position = self.previous()
 
     def next(self):
         if not self.available_moves:
@@ -302,7 +314,7 @@ class Game(list):
         return True
 
 
-def parse_input(file_obj=sys.stdin):
+def parse_input(options, file_obj=sys.stdin):
     games = []
 
     count = 0
@@ -319,7 +331,7 @@ def parse_input(file_obj=sys.stdin):
         count += 1
 
         if count == 9:
-            games.append(Game(matrix))
+            games.append(Game(matrix, forward_check=options.forward_check))
             matrix = []
             count = 0
 
@@ -355,7 +367,7 @@ def main():
     options = parse_options()
     configure_logging(options)
 
-    games = parse_input()
+    games = parse_input(options=options)
     status = 0
 
     for i, game in enumerate(games):
@@ -366,7 +378,7 @@ def main():
             if not game.is_valid():
                 status = 1
         else:
-            game.solve(forward_check=options.forward_check)
+            game.solve()
             print game
 
     return status
