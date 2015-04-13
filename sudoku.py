@@ -82,7 +82,7 @@ class GamePosition(object):
                 position.possibilities.column.remove(value)
 
         for position in self.region:
-            if value in position.possibilities.column:
+            if value in position.possibilities.region:
                 position.possibilities.region.remove(value)
 
     def add_possibilities(self, value):
@@ -150,7 +150,7 @@ class GamePosition(object):
         return str(self)
 
 
-class Game(list):
+class Game(object):
 
     def __init__(self, matrix, forward_check=False, mrv=False):
         self.forward_check = forward_check
