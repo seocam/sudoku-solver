@@ -201,12 +201,9 @@ class Game(list):
 
     def solve(self):
         for position in self:
-            while not position.possibilities:
-                logging.debug('No possibilities for [%s][%s]',
-                              *position.coordinates)
-                position.possibilities.tested.clear()
-                position = self.previous()
-                position.value = 0
+
+            if not position.possibilities:
+                position = self.backtrack(position)
 
             for value in position.possibilities:
                 if position.check_possibilities(value):
@@ -215,9 +212,20 @@ class Game(list):
                     break
 
                 position.possibilities.tested.add(value)
-
             else:
-                position = self.previous()
+                self.previous()
+
+    def backtrack(self, position):
+        logging.debug('Backtracking!')
+
+        while not position.possibilities:
+            logging.debug('No possibilities for [%s][%s]',
+                          *position.coordinates)
+            position.possibilities.tested.clear()
+            position.value = 0
+            position = self.previous()
+            position.value = 0
+        return position
 
     def next(self):
         if not self.available_moves:
@@ -240,8 +248,6 @@ class Game(list):
     def previous(self):
         if len(self.last_moves) == 1:
             raise StopIteration
-
-        logging.debug('Backtracking!')
 
         last_position = self.last_moves.pop()
 
