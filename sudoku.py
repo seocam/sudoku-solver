@@ -15,14 +15,14 @@ class Possibilities(object):
         self.tested = set()
 
     @property
-    def intersect(self):
+    def available(self):
         return (self.line & self.region & self.column) - self.tested
 
     def __len__(self):
-        return len(self.intersect)
+        return len(self.available)
 
     def _to_list(self):
-        return sorted(self.intersect)
+        return sorted(self.available)
 
     def next(self):
         possibilities = self._to_list()
@@ -65,7 +65,7 @@ class GamePosition(object):
             if position.value != 0:
                 continue
 
-            if not position.possibilities.intersect - {value}:
+            if not position.possibilities.available - {value}:
                 logging.debug('Forward Checking failed on position %s',
                               position)
                 return False
