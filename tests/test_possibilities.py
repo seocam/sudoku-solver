@@ -62,3 +62,7 @@ class TestPossibilities(unittest.TestCase):
 
         with self.assertRaises(StopIteration):
             self.possibilities.next()
+
+    def test_repr(self):
+        self.possibilities.line -= {1,2,3,4,5,6,7}
+        self.assertEqual(repr(self.possibilities), str([8,9]))
