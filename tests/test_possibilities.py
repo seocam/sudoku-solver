@@ -54,7 +54,6 @@ class TestPossibilities(unittest.TestCase):
 
     def test_next(self):
         i = 1
-        print self.possibilities
         for possibility in self.possibilities:
             self.assertEqual(possibility, i)
             self.possibilities.tested.add(i)
