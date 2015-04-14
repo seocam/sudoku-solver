@@ -105,11 +105,11 @@ class GamePosition(object):
     @value.setter
     def value(self, value):
 
-        logging.debug('Setting position [%s][%s] from %s to %s',
-                      self.i, self.j, self.value, value)
-
         if value == self._value:
             return
+
+        logging.debug('Setting position [%s][%s] from %s to %s',
+                      self.i, self.j, self.value, value)
 
         if not value:
             logging.debug('Added %s back to possibilities', self._value)
