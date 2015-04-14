@@ -332,7 +332,7 @@ class Game(object):
         return True
 
 
-def parse_input(forward_check=None, mrv=None, file_obj=sys.stdin):
+def parse_input(forward_check=None, mrv=False, file_obj=sys.stdin):
     games = []
 
     count = 0

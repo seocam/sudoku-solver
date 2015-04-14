@@ -90,7 +90,7 @@ class TestGame(unittest.TestCase):
         available_moves = [(0, 0), (1, 3), (4, 5)]
         for i, position in enumerate(game):
             self.assertEqual(position.coordinates, available_moves[i])
-        
+
         with self.assertRaises(StopIteration):
             game.next()
 
@@ -112,3 +112,48 @@ class TestGame(unittest.TestCase):
 
         with self.assertRaises(StopIteration):
             game.next()
+
+    def test_previous(self):
+        game_str = (u'0 1 7 3 6 9 8 2 5\n'
+                    '6 3 2 0 5 8 9 4 7\n'
+                    '9 5 8 7 2 4 3 1 6\n'
+                    '8 2 5 4 3 7 1 6 9\n'
+                    '7 9 1 5 8 0 4 3 2\n'
+                    '3 4 6 9 1 2 7 5 8\n'
+                    '2 8 9 6 4 3 5 7 1\n'
+                    '5 7 3 2 9 1 6 8 4\n'
+                    '1 6 4 8 7 5 2 9 3\n')
+        game = self.game_from_str(game_str)
+
+        position = game.next()
+        game.next()
+        self.assertEqual(position, game.previous())
+
+    def test_current_position(self):
+        game_str = (u'0 1 7 3 6 9 8 2 5\n'
+                    '6 3 2 0 5 8 9 4 7\n'
+                    '9 5 8 7 2 4 3 1 6\n'
+                    '8 2 5 4 3 7 1 6 9\n'
+                    '7 9 1 5 8 0 4 3 2\n'
+                    '3 4 6 9 1 2 7 5 8\n'
+                    '2 8 9 6 4 3 5 7 1\n'
+                    '5 7 3 2 9 1 6 8 4\n'
+                    '1 6 4 8 7 5 2 9 3\n')
+        game = self.game_from_str(game_str)
+
+        position = game.next()
+        self.assertEqual(position, game.current_position)
+
+
+    def test_repr(self):
+        game_str = (u'4 1 7 3 6 9 8 2 5\n'
+                    '6 3 2 1 5 8 9 4 7\n'
+                    '9 5 8 7 2 4 3 1 6\n'
+                    '8 2 5 4 3 7 1 6 9\n'
+                    '7 9 1 5 8 6 4 3 2\n'
+                    '3 4 6 9 1 2 7 5 8\n'
+                    '2 8 9 6 4 3 5 7 1\n'
+                    '5 7 3 2 9 1 6 8 4\n'
+                    '1 6 4 8 7 5 2 9 3\n')
+        game = self.game_from_str(game_str)
+        self.assertEqual(game_str, repr(game))
