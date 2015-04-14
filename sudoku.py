@@ -8,6 +8,22 @@ from optparse import OptionParser
 
 
 class Possibilities(object):
+    """Stores available possibilities for a position.
+
+    Possibilities for column, line and region are stored in separated
+    structures. Possibilities already attempted are also kept in an
+    attribute the ``tested``.
+
+    The difference between ``tested`` and the intersection of
+    ``column``, ``line`` and ``region`` give the current available
+    possibilities.
+
+    This class also implements the iterator pattern always returning
+    the first possibility available. This possibility is also added
+    ``tested``.
+
+    """
+
     def __init__(self):
         self.column = set(range(1, 10))
         self.line = set(range(1, 10))
@@ -30,7 +46,9 @@ class Possibilities(object):
         if not possibilities:
             raise StopIteration
 
-        return possibilities[0]
+        possibility = possibilities.pop(0)
+        self.tested.add(possibility)
+        return possibility
 
     def __next__(self):
         return self.next()
@@ -208,10 +226,7 @@ class Game(object):
             for value in position.possibilities:
                 if position.check_possibilities(value):
                     position.value = value
-                    position.possibilities.tested.add(value)
                     break
-
-                position.possibilities.tested.add(value)
             else:
                 self.backtrack(position)
 

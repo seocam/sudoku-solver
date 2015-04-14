@@ -56,7 +56,6 @@ class TestPossibilities(unittest.TestCase):
         i = 1
         for possibility in self.possibilities:
             self.assertEqual(possibility, i)
-            self.possibilities.tested.add(i)
             i += 1
 
         with self.assertRaises(StopIteration):
