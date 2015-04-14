@@ -315,11 +315,13 @@ class Game(object):
                 logging.debug('\n%s', self)
                 return False
 
-        # Check regions
-        for region in self.REGIONS.values():
-            region_set = set()
-            for i, j in region:
-                region_set.add(self.matrix[i][j].value)
+        region_starts = itertools.combinations_with_replacement([0, 3, 6], 2)
+        for i, j in region_starts:
+            target_position = self.matrix[i][j]
+            region_set = {target_position.value}
+
+            for position in target_position.region:
+                region_set.add(position.value)
 
             if len(region_set) != 9:
                 logging.info('Invalid Solution (region)')
