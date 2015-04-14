@@ -7,6 +7,10 @@ import sys
 from optparse import OptionParser
 
 
+class MaxAttemptsExceeded(Exception):
+    pass
+
+
 class Possibilities(object):
     """Stores available possibilities for a position.
 
@@ -43,6 +47,8 @@ class Possibilities(object):
     def next(self):
         possibilities = self._to_list()
 
+        # If no possibilities are available raise StopIteration
+        #   to stop the for loop
         if not possibilities:
             raise StopIteration
 
@@ -135,6 +141,14 @@ class GamePosition(object):
         else:
             logging.debug('Removed %s from possibilities', value)
             self.remove_possibilities(value)
+            self.game.attr_count += 1
+
+            if self.game.max_attempts:
+                # Abort if number of attempts exceed maximum value set
+                if self.game.attr_count > int(self.game.max_attempts):
+                    print('Numero de atribuicoes excede limite maximo')
+                    logging.info('Number of attempts %s', self.game.attr_count)
+                    raise MaxAttemptsExceeded
 
         self._value = value
 
@@ -173,11 +187,13 @@ class GamePosition(object):
 
 class Game(object):
 
-    def __init__(self, matrix, forward_check=False, mrv=False):
+    def __init__(self, matrix, forward_check=False, mrv=False, max_attempts=0):
         self.forward_check = forward_check
         self.mrv = mrv
         self.last_moves = []
         self.backtracking = False
+        self.attr_count = 0
+        self.max_attempts = max_attempts
 
         # Start an empty game
         self.empty_game()
@@ -229,6 +245,7 @@ class Game(object):
                     break
             else:
                 self.backtrack(position)
+        logging.info('Solved with %s attributions.', self.attr_count)
 
     def backtrack(self, position):
         logging.debug('Backtracking!')
@@ -348,7 +365,8 @@ class Game(object):
         return True
 
 
-def parse_input(forward_check=None, mrv=False, file_obj=sys.stdin):
+def parse_input(forward_check=None, mrv=False, max_attempts=0,
+                file_obj=sys.stdin):
     games = []
 
     count = 0
@@ -365,7 +383,8 @@ def parse_input(forward_check=None, mrv=False, file_obj=sys.stdin):
         count += 1
 
         if count == 9:
-            game = Game(matrix, forward_check=forward_check, mrv=mrv)
+            game = Game(matrix, forward_check=forward_check, mrv=mrv,
+                        max_attempts=max_attempts)
             games.append(game)
             matrix = []
             count = 0
@@ -389,6 +408,10 @@ def parse_options():
     optparser.add_option("--validate", dest="validade",
                          default=False, action="store_true",
                          help="Check game results")
+    optparser.add_option("--max-attempts", dest="max_attempts", default=10**6,
+                         help=("Abort execution if exceeded. "
+                               "Set to 0 to disable this check. "
+                               "Defaults to 10^6"))
 
     return optparser.parse_args()[0]
 
@@ -405,7 +428,8 @@ def main():
     options = parse_options()
     configure_logging(options)
 
-    games = parse_input(options.forward_check, options.mrv)
+    games = parse_input(options.forward_check, options.mrv,
+                        options.max_attempts)
     status = 0
 
     for i, game in enumerate(games):
@@ -415,8 +439,12 @@ def main():
             if not game.is_valid():
                 status = 1
         else:
-            game.solve()
-            print(game)
+            try:
+                game.solve()
+            except MaxAttemptsExceeded:
+                pass
+            else:
+                print(game)
 
     return status
 
