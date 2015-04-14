@@ -332,7 +332,7 @@ class Game(object):
         return True
 
 
-def parse_input(options, file_obj=sys.stdin):
+def parse_input(forward_check=None, mrv=None, file_obj=sys.stdin):
     games = []
 
     count = 0
@@ -349,8 +349,7 @@ def parse_input(options, file_obj=sys.stdin):
         count += 1
 
         if count == 9:
-            game = Game(matrix, forward_check=options.forward_check,
-                        mrv=options.mrv)
+            game = Game(matrix, forward_check=forward_check, mrv=mrv)
             games.append(game)
             matrix = []
             count = 0
@@ -390,7 +389,7 @@ def main():
     options = parse_options()
     configure_logging(options)
 
-    games = parse_input(options=options)
+    games = parse_input(options.forward_check, options.mrv)
     status = 0
 
     for i, game in enumerate(games):
