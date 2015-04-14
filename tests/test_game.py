@@ -7,9 +7,9 @@ from sudoku import parse_input
 
 class TestGame(unittest.TestCase):
 
-    def game_from_str(self, game_str):
+    def game_from_str(self, game_str, check_forward=False, mrv=False):
         game_filelike = io.StringIO(game_str)
-        return parse_input(file_obj=game_filelike)[0]
+        return parse_input(check_forward, mrv, file_obj=game_filelike)[0]
 
     def test_validate_with_empty(self):
         game_str = (u'0 0 0 0 0 0 0 0 0\n'
@@ -75,3 +75,40 @@ class TestGame(unittest.TestCase):
                     '1 6 4 8 7 5 2 9 3\n')
         game = self.game_from_str(game_str)
         self.assertTrue(game.is_valid())
+
+    def test_next(self):
+        game_str = (u'0 1 7 3 6 9 8 2 5\n'
+                    '6 3 2 0 5 8 9 4 7\n'
+                    '9 5 8 7 2 4 3 1 6\n'
+                    '8 2 5 4 3 7 1 6 9\n'
+                    '7 9 1 5 8 0 4 3 2\n'
+                    '3 4 6 9 1 2 7 5 8\n'
+                    '2 8 9 6 4 3 5 7 1\n'
+                    '5 7 3 2 9 1 6 8 4\n'
+                    '1 6 4 8 7 5 2 9 3\n')
+        game = self.game_from_str(game_str)
+        available_moves = [(0, 0), (1, 3), (4, 5)]
+        for i, position in enumerate(game):
+            self.assertEqual(position.coordinates, available_moves[i])
+        
+        with self.assertRaises(StopIteration):
+            game.next()
+
+    def test_next_mrv(self):
+        game_str = (u'0 1 7 3 6 9 8 2 5\n'
+                    '0 0 0 0 5 8 9 4 7\n'
+                    '0 0 0 7 2 4 3 1 6\n'
+                    '0 0 0 4 3 7 1 6 9\n'
+                    '7 9 1 5 8 0 4 3 2\n'
+                    '3 4 6 9 1 2 7 5 8\n'
+                    '2 8 9 6 4 3 5 7 1\n'
+                    '5 7 3 2 9 1 6 8 4\n'
+                    '1 6 4 8 7 5 2 9 3\n')
+        game = self.game_from_str(game_str, mrv=True)
+        available_moves = [(0, 0), (1, 0), (1, 2), (1, 3), (2, 1), (3, 0),
+                           (4, 5), (1, 1), (2, 0), (2, 2), (3, 1), (3, 2)]
+        for i, position in enumerate(game):
+            self.assertEqual(position.coordinates, available_moves[i])
+
+        with self.assertRaises(StopIteration):
+            game.next()
