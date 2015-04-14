@@ -32,6 +32,9 @@ class Possibilities(object):
 
         return possibilities[0]
 
+    def __next__(self):
+        return self.next()
+
     def __iter__(self):
         return self
 
@@ -245,6 +248,9 @@ class Game(object):
         self.log_step(position)
         return position
 
+    def __next__(self):
+        return self.next()
+
     def previous(self):
         if len(self.last_moves) == 1:
             raise StopIteration
@@ -393,7 +399,7 @@ def main():
                 status = 1
         else:
             game.solve()
-            print game
+            print(game)
 
     return status
 
