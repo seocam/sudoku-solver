@@ -3,6 +3,7 @@
 import itertools
 import logging
 import sys
+import time
 
 from optparse import OptionParser
 
@@ -141,13 +142,14 @@ class GamePosition(object):
         else:
             logging.debug('Removed %s from possibilities', value)
             self.remove_possibilities(value)
-            self.game.attr_count += 1
+            self.game.attempts_count += 1
 
             if self.game.max_attempts:
                 # Abort if number of attempts exceed maximum value set
-                if self.game.attr_count > int(self.game.max_attempts):
-                    print('Numero de atribuicoes excede limite maximo')
-                    logging.info('Number of attempts %s', self.game.attr_count)
+                if self.game.attempts_count > int(self.game.max_attempts):
+                    print('Numero de atribuicoes excede limite maximo\n')
+                    logging.info('Number of attempts %s',
+                                 self.game.attempts_count)
                     raise MaxAttemptsExceeded
 
         self._value = value
@@ -192,7 +194,7 @@ class Game(object):
         self.mrv = mrv
         self.last_moves = []
         self.backtracking = False
-        self.attr_count = 0
+        self.attempts_count = 0
         self.max_attempts = max_attempts
 
         # Start an empty game
@@ -238,6 +240,7 @@ class Game(object):
             logging.debug('Possibilities: %s', position.possibilities)
 
     def solve(self):
+        start = time.time()
         for position in self:
             for value in position.possibilities:
                 if position.check_possibilities(value):
@@ -245,7 +248,9 @@ class Game(object):
                     break
             else:
                 self.backtrack(position)
-        logging.info('Solved with %s attributions.', self.attr_count)
+        elapsed = time.time() - start
+        logging.info('Solved with %s attempts in %.2f seconds',
+                     self.attempts_count, elapsed)
 
     def backtrack(self, position):
         logging.debug('Backtracking!')
@@ -409,7 +414,7 @@ def parse_options():
                          default=False, action="store_true",
                          help="Check game results")
     optparser.add_option("--max-attempts", dest="max_attempts", default=10**6,
-                         help=("Abort execution if exceeded. "
+                         help=("Abort execution if exceeds MAX_ATTEMPTS. "
                                "Set to 0 to disable this check. "
                                "Defaults to 10^6"))
 
