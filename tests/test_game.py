@@ -144,7 +144,6 @@ class TestGame(unittest.TestCase):
         position = game.next()
         self.assertEqual(position, game.current_position)
 
-
     def test_repr(self):
         game_str = (u'4 1 7 3 6 9 8 2 5\n'
                     '6 3 2 1 5 8 9 4 7\n'
@@ -157,3 +156,6 @@ class TestGame(unittest.TestCase):
                     '1 6 4 8 7 5 2 9 3\n')
         game = self.game_from_str(game_str)
         self.assertEqual(game_str, repr(game))
+
+    def test_backtrack(self):
+        pass

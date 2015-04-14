@@ -159,6 +159,7 @@ class Game(object):
         self.forward_check = forward_check
         self.mrv = mrv
         self.last_moves = []
+        self.backtracking = False
 
         # Start an empty game
         self.empty_game()
@@ -204,10 +205,6 @@ class Game(object):
 
     def solve(self):
         for position in self:
-
-            if not position.possibilities:
-                position = self.backtrack(position)
-
             for value in position.possibilities:
                 if position.check_possibilities(value):
                     position.value = value
@@ -216,7 +213,7 @@ class Game(object):
 
                 position.possibilities.tested.add(value)
             else:
-                self.previous()
+                self.backtrack(position)
 
     def backtrack(self, position):
         logging.debug('Backtracking!')
@@ -225,12 +222,16 @@ class Game(object):
             logging.debug('No possibilities for [%s][%s]',
                           *position.coordinates)
             position.possibilities.tested.clear()
-            position.value = 0
             position = self.previous()
             position.value = 0
-        return position
+
+        self.backtracking = True
 
     def next(self):
+        if self.backtracking:
+            self.backtracking = False
+            return self.current_position
+
         if not self.available_moves:
             raise StopIteration
 
