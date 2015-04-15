@@ -196,6 +196,7 @@ class Game(object):
         self.backtracking = False
         self.attempts_count = 0
         self.max_attempts = max_attempts
+        self.id = None
 
         # Start an empty game
         self.empty_game()
@@ -249,8 +250,8 @@ class Game(object):
             else:
                 self.backtrack(position)
         elapsed = time.time() - start
-        logging.info('Solved with %s attempts in %.2f seconds',
-                     self.attempts_count, elapsed)
+        logging.info('Game #%s solved with %s attempts in %.2f seconds',
+                     self.id, self.attempts_count, elapsed)
 
     def backtrack(self, position):
         logging.debug('Backtracking!')
@@ -329,6 +330,8 @@ class Game(object):
         return self
 
     def is_valid(self):
+        logging.info('Game #%s', self.id)
+
         for line in self.matrix:
             # Check for zeros
             if 0 in line:
@@ -438,8 +441,7 @@ def main():
     status = 0
 
     for i, game in enumerate(games):
-        logging.info('Game #%s', i + 1)
-
+        game.id = i + 1
         if options.validade:
             if not game.is_valid():
                 status = 1
