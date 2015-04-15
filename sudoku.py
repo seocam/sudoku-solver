@@ -144,9 +144,9 @@ class GamePosition(object):
             self.remove_possibilities(value)
             self.game.attempts_count += 1
 
-            if self.game.max_attempts:
+            if self.game.max_attempts > 0:
                 # Abort if number of attempts exceed maximum value set
-                if self.game.attempts_count > int(self.game.max_attempts):
+                if self.game.attempts_count > self.game.max_attempts:
                     print('Numero de atribuicoes excede limite maximo\n')
                     logging.info('Number of attempts %s',
                                  self.game.attempts_count)
@@ -416,7 +416,8 @@ def parse_options():
     optparser.add_option("--validate", dest="validade",
                          default=False, action="store_true",
                          help="Check game results")
-    optparser.add_option("--max-attempts", dest="max_attempts", default=10**6,
+    optparser.add_option("--max-attempts", dest="max_attempts",
+                         default=10**6, type="int",
                          help=("Abort execution if exceeds MAX_ATTEMPTS. "
                                "Set to 0 to disable this check. "
                                "Defaults to 10^6"))
