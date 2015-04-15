@@ -82,24 +82,6 @@ class GamePosition(object):
         self.j = j
         self.value = int(value)
 
-    def check_possibilities(self, value):
-        if not self.game.forward_check:
-            return True
-
-        logging.debug('Forward Checking possibility %s', value)
-        positions = itertools.chain(self.line, self.column, self.region)
-
-        for position in positions:
-            if position.value != 0:
-                continue
-
-            if not position.possibilities.available - {value}:
-                logging.debug('Forward Checking failed on position %s',
-                              position)
-                return False
-
-        return True
-
     def remove_possibilities(self, value):
         for position in self.line:
             if value in position.possibilities.line:
@@ -244,7 +226,7 @@ class Game(object):
         start = time.time()
         for position in self:
             for value in position.possibilities:
-                if position.check_possibilities(value):
+                if self.forward_checking(position, value):
                     position.value = value
                     break
             else:
@@ -252,6 +234,26 @@ class Game(object):
         elapsed = time.time() - start
         logging.info('Game #%s solved with %s attempts in %.2f seconds',
                      self.id, self.attempts_count, elapsed)
+
+    def forward_checking(self, target_position, value):
+        if not self.forward_check:
+            return True
+
+        logging.debug('Forward Checking possibility %s', value)
+        positions = set(itertools.chain(target_position.line,
+                                        target_position.column,
+                                        target_position.region))
+
+        for position in positions:
+            if position.value != 0:
+                continue
+
+            if not position.possibilities.available - {value}:
+                logging.debug('Forward Checking failed on position %s',
+                              position)
+                return False
+
+        return True
 
     def backtrack(self, position):
         logging.debug('Backtracking!')
