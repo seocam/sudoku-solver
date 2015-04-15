@@ -7,7 +7,7 @@ python:
   - "pypy"
 
 install:
-  - pip install coverage flake8
+  - make
 
 script:
   - make test
