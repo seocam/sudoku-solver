@@ -2,10 +2,24 @@
 import io
 import unittest
 
-from sudoku import parse_input
+from sudoku import parse_input, Game
 
 
 class TestGame(unittest.TestCase):
+
+    def setUp(self):
+          matrix = [
+              [0, 7, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 2, 3, 4, 5, 6, 7, 8, 9],
+          ]
+          self.game = Game(matrix, forward_check=True)
 
     def game_from_str(self, game_str, check_forward=False, mrv=False):
         game_filelike = io.StringIO(game_str)
@@ -157,5 +171,13 @@ class TestGame(unittest.TestCase):
         game = self.game_from_str(game_str)
         self.assertEqual(game_str, repr(game))
 
-    def test_backtrack(self):
-        pass
+    def test_check_possibilities(self):
+        position = self.game.matrix[0][0]
+        self.assertFalse(self.game.forward_checking(position, 1))
+        self.assertTrue(self.game.forward_checking(position, 2))
+
+    def test_forward_checking_disabled(self):
+        self.game.forward_check = False
+        position = self.game.matrix[0][0]
+        self.assertTrue(self.game.forward_checking(position, 1))
+        self.assertTrue(self.game.forward_checking(position, 2))

@@ -36,17 +36,6 @@ class TestGamePosition(unittest.TestCase):
         position = self.game.matrix[3][5] 
         self.assertEqual(position.coordinates, (3, 5))
 
-    def test_check_possibilities(self):
-        position = self.game.matrix[0][0]
-        self.assertFalse(position.check_possibilities(1))
-        self.assertTrue(position.check_possibilities(2))
-
-    def test_forward_checking_disabled(self):
-        self.game.forward_check = False
-        position = self.game.matrix[0][0]
-        self.assertTrue(position.check_possibilities(1))
-        self.assertTrue(position.check_possibilities(2))
-
     def assert_in_possibilities(self, value, target_position):
         for position in target_position.line:
             self.assertIn(value, position.possibilities.line)
